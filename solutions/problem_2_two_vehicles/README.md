@@ -43,9 +43,22 @@ How the limit changes the answer for 10 locations:
 
 The hard-limit circuit with one mixer angle per move and 20 layers has the highest P(opt), 97.0 %. It needs 3,602 cost evaluations, so the 10-layer circuit ranks above it.
 
+### 4 locations, one-way distances, both vans must deliver, no distance limit
+
+This is the instance of Eli's notebook. It differs from the task above: the second van is forced by the rule "each van delivers at least one stop", not by a distance limit, and the distances are the real one-way ones. The shortest plan is 15.631 km: 0 → 1 → 3 → 0 and 0 → 2 → 0. The 75 % distance limit gives the same plan on these four locations.
+
+| Rank | Solution | Qubits | Layers | P(opt) | P(valid) | Mean gap | Cost evaluations for 99 % | Training cost | Runs today | Version | Evaluated |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Brute force: the 12 valid plans (in [`penalty_qaoa_scores.ipynb`](penalty_qaoa_scores.ipynb)) | | | 100 % | 100 % | 0 % | 12 | None | Yes | | 2026-11-12 21:34 |
+| 2 | Random 18-bit string (reference) | 18 | 0 | 0.00076 % | 0.0046 % | 13.4 % | 603,607 | None | Yes | | 2026-11-12 21:34 |
+| 3 | [Eli's QAOA](../../Eli_two_couriers_solution.ipynb) | 18 | 1 | 0.00012 % | 0.00073 % | 13.4 % | 7,529,940 | At most 30 simulated circuits | No, simulated | `2641ac8` | 2026-11-12 21:34 |
+
+The measures for this table are computed in [`penalty_qaoa_scores.ipynb`](penalty_qaoa_scores.ipynb).
+
 **Cost evaluations in one shot.** One cost evaluation means working out the two route lengths of a plan once.
 
 - Soft limit: layers + 1.
+- Eli's QAOA: layers + 1.
 - Hard limit: 20 + 89 × layers + 1. The 20 are the rounds of amplitude amplification in the start state. The 89 are one cost phase and two limit checks for each of the 44 mixer moves.
 
 Read the rankings with care:
@@ -87,8 +100,21 @@ The reference quantum solution. It solves all 10 locations and builds on the one
 - **Main finding:** the second van costs almost nothing. The distance limit is the expensive part, because the circuit has to work it out with arithmetic. Keeping the limit exact gives the best shots but costs about 75 times more gates per shot than a penalty.
 - **Not done:** the real one-way road distances, and a simulation of the full 175-qubit circuit in one piece.
 
+### Eli's two-courier QAOA: [`../../Eli_two_couriers_solution.ipynb`](../../Eli_two_couriers_solution.ipynb)
+
+Standard QAOA with penalties on the depot and 3 stops, with one-way distances.
+
+- **Encoding:** one qubit per "courier c visits stop d at position p", 18 qubits. Four penalty rules with weight 100: every stop once, one stop per position, no gaps in a route, and at least one stop per courier.
+- **The model is correct.** The cost of each of the 12 valid plans equals its distance, and no invalid bitstring is cheaper than the shortest plan.
+- **Circuit:** 1 layer, 174 CX gates before routing. COBYLA minimises the average energy from a fixed start, with at most 30 evaluations.
+- **Result:** 0.00073 % of shots are valid plans. A random bitstring is valid 6.3 times more often. The notebook's 10,000 shots contain no valid plan, and 0.07 were to be expected.
+- **Why:** the penalties make the energies span a range about 2,000 times wider than the differences between valid plans, so the circuit hardly sees the distances. The optimiser also stopped at a poor mixer angle. The best one-layer angles on a grid give 0.054 % valid shots, 74 times more, which is still 104,086 cost evaluations against 12 for brute force.
+- **What the golden notebook does differently:** it never leaves the valid orders, so no qubits and no layers are spent on the visiting rules. On these sizes that matters more than the choice of angles.
+
 ## Scoring a solution
 
 Decode every shot to a pair of routes: two tuples of stops, one per van, in driving order. An empty tuple is a van that stays at the depot. Count shots that cannot be decoded under the key `None`. Score the shots with `score_plans` from section 12 of the golden notebook. It marks a shot as valid when every stop appears once and both routes are within the limit.
 
 For smaller instances, pass the number of locations: `score_plans(counts, n=5)`. The reference values above give the answers to expect.
+
+For standard QAOA with penalties, `penalty_qaoa_scores.ipynb` shows how to score a circuit from its angles.
