@@ -33,13 +33,13 @@ How the limit changes the answer for 10 locations:
 
 | Rank | Solution | Qubits | Layers | P(opt) | P(valid) | Mean gap | Cost evaluations for 99 % | Training cost on hardware | Runs today | Version | Evaluated |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), soft limit, linear ramp | 138 | 40 | 11.5 % | 94.1 % | 1.5 % | 1,558 | 16 circuits | No, simulated | Not committed | 2026-11-12 21:07 |
-| 2 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, one mixer angle per move | 175 | 10 | 79.4 % | 99.9 % | 1.8 % | 2,733 | 2,327,283 circuits | No, simulated | Not committed | 2026-11-12 21:07 |
-| 3 | Grover adaptive search (reference, computed in the golden notebook) | | | | 100 % | | 4,241 | None | No, simulated | Not committed | 2026-11-12 21:07 |
-| 4 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, one mixer angle per layer | 175 | 20 | 50.2 % | 99.9 % | 2.4 % | 12,607 | 50,868 circuits | No, simulated | Not committed | 2026-11-12 21:07 |
-| 5 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, linear ramp | 175 | 20 | 24.7 % | 99.9 % | 4.1 % | 30,617 | 25 circuits | No, simulated | Not committed | 2026-11-12 21:07 |
-| 6 | Random plan (reference) | | | 0.00022 % | 0.15 % | 13.8 % | 2,088,903 | None | Yes | Not committed | 2026-11-12 21:07 |
-| 7 | Brute force: every plan (section 3 of the golden notebook) | | | 100 % | 100 % | 0 % | 3,628,800 | None | Yes, seconds on a laptop | Not committed | 2026-11-12 21:07 |
+| 1 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), soft limit, linear ramp | 138 | 40 | 11.5 % | 94.1 % | 1.5 % | 1,558 | 16 circuits | No, simulated | `417c44f` | 2026-11-12 21:07 |
+| 2 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, one mixer angle per move | 175 | 10 | 79.4 % | 99.9 % | 1.8 % | 2,733 | 2,327,283 circuits | No, simulated | `417c44f` | 2026-11-12 21:07 |
+| 3 | Grover adaptive search (reference, computed in the golden notebook) | | | | 100 % | | 4,241 | None | No, simulated | `417c44f` | 2026-11-12 21:07 |
+| 4 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, one mixer angle per layer | 175 | 20 | 50.2 % | 99.9 % | 2.4 % | 12,607 | 50,868 circuits | No, simulated | `417c44f` | 2026-11-12 21:07 |
+| 5 | [Golden QAOA](golden_quantum_two_vehicles.ipynb), hard limit, linear ramp | 175 | 20 | 24.7 % | 99.9 % | 4.1 % | 30,617 | 25 circuits | No, simulated | `417c44f` | 2026-11-12 21:07 |
+| 6 | Random plan (reference) | | | 0.00022 % | 0.15 % | 13.8 % | 2,088,903 | None | Yes | `417c44f` | 2026-11-12 21:07 |
+| 7 | Brute force: every plan (section 3 of the golden notebook) | | | 100 % | 100 % | 0 % | 3,628,800 | None | Yes, seconds on a laptop | `417c44f` | 2026-11-12 21:07 |
 
 The hard-limit circuit with one mixer angle per move and 20 layers has the highest P(opt), 97.0 %. It needs 3,602 cost evaluations, so the 10-layer circuit ranks above it.
 
