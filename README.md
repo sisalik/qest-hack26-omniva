@@ -49,6 +49,10 @@ We choose the rule that sends a parcel to a chute. The rule can use location, ro
 
 To simulate the circuits and optimise them on our own machines, we scale the problem down and solve it in three steps.
 
+In every step, the cost to minimise is the total road distance, not the travel time. The distances come from `tallinn_osrm_matrix.json`.
+
+Real road distances depend on direction because of one-way streets and turns: A→B and B→A can differ by up to 1.6 km. Keeping both directions would need about twice as many qubits, which puts even small problems beyond what we can simulate and run. We therefore use one distance per pair of locations, taken from the upper half of the matrix: the distance from the lower-numbered point to the higher-numbered one.
+
 1. **One vehicle, one route.** Solve the travelling salesperson problem (TSP) on 5 or more locations. Find the largest number of locations we can handle. Make sure every team member understands how the solution works.
 2. **Two vehicles.** Add a second vehicle and minimise the total distance of both routes. The second vehicle is needed because one vehicle cannot cover enough ground: it is too slow, or it has a distance limit.
 3. **Time windows.** Require some locations to be visited within a given time window. A first idea: give each edge a travel time as well as a distance, and require that the travel times along a route stay below a limit.
