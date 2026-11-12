@@ -49,6 +49,8 @@ We choose the rule that sends a parcel to a chute. The rule can use location, ro
 
 To simulate the circuits and optimise them on our own machines, we scale the problem down and solve it in three steps.
 
-1. **One vehicle, one route.** Solve the travelling salesperson problem (TSP) on 5 or more locations. Find the largest number of locations we can handle. Make sure every team member understands how the solution works.
+In every step, the cost to minimise is the road distance in metres, not the travel time. The distances come from `tallinn_osrm_matrix.json`. Travel times from the same file are used only as a constraint, from Step 3 onwards.
+
+1. **One vehicle, one route.** Solve the travelling salesperson problem (TSP) on 5 or more locations, minimising the total distance driven. Find the largest number of locations we can handle. Make sure every team member understands how the solution works.
 2. **Two vehicles.** Add a second vehicle and minimise the total distance of both routes. The second vehicle is needed because one vehicle cannot cover enough ground: it is too slow, or it has a distance limit.
-3. **Time windows.** Require some locations to be visited within a given time window. A first idea: give each edge a travel time as well as a distance, and require that the travel times along a route stay below a limit.
+3. **Time windows.** Require some locations to be visited within a given time window. A first idea: give each edge a travel time as well as a distance, and require that the travel times along a route stay below a limit. The cost is still the total distance; travel time only limits which routes are allowed.
