@@ -1,4 +1,12 @@
 {
+  "stop_labels": {
+    "1": "President",
+    "2": "Kebab",
+    "4": "Patarei",
+    "7": "Zoo",
+    "8": "Spordikeskus",
+    "9": "Airport"
+  },
   "maps": [
     {
       "name": "step1_route",
@@ -11,6 +19,23 @@
       "panels": [
         {"routes": [{"label": "Brute force (optimal)", "stops": [0, 3, 4, 1, 2, 0]}]},
         {"routes": [{"label": "QAOA (placeholder)", "stops": [0, 1, 3, 4, 2, 0]}]}
+      ]
+    },
+    {
+      "name": "step2_routes",
+      "routes": [
+        {"label": "Vehicle 1", "stops": [0, 1, 3, 4, 5, 9, 2, 0]},
+        {"label": "Vehicle 2", "stops": [0, 6, 8, 7, 0]}
+      ]
+    },
+    {
+      "name": "step2_comparison",
+      "panels": [
+        {"routes": [{"label": "One vehicle, no limit", "stops": [0, 1, 3, 4, 5, 7, 8, 6, 9, 2, 0]}]},
+        {"routes": [
+          {"label": "Vehicle 1", "stops": [0, 1, 3, 4, 5, 9, 2, 0]},
+          {"label": "Vehicle 2", "stops": [0, 6, 8, 7, 0]}
+        ]}
       ]
     }
   ]

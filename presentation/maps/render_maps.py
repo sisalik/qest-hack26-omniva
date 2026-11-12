@@ -5,9 +5,11 @@
 """Render route maps for the slides on a MapTiler Dataviz basemap.
 
 Reads map definitions from routes.json and writes one PNG per map to
-presentation/img/. Routes are straight lines labelled with the symmetrised
-distance the solvers use: D[min(i, j)][max(i, j)]. Tiles, fonts and the logo
-are cached in .cache/, so re-renders while tweaking the style run offline.
+presentation/img/. "stop_labels" in routes.json gives stops a shorter name on
+the maps than in the matrix file. Routes are straight lines. Each leg shows the symmetrised
+distance the solvers use, D[min(i, j)][max(i, j)], beside the line where there
+is room for it. Tiles, fonts and the logo are cached in .cache/, so re-renders
+while tweaking the style run offline.
 
 Run from anywhere: uv run presentation/maps/render_maps.py
 """
@@ -50,7 +52,11 @@ PANELS_HEIGHT_IN = 7
 PANEL_GAP = 0.008
 DPI = 150
 
-PILL_FONTSIZE = 12
+LEG_LABEL_FONTSIZE = 12
+# Where along a leg its distance label is tried, as a share of the leg: the middle first.
+LEG_LABEL_POSITIONS = (0.5, 0.35, 0.65, 0.25, 0.75)
+ROUTE_LINEWIDTH = 4
+ROUTE_CASING_LINEWIDTH = 8
 STOP_MARKER_SIZE = 700
 DEPOT_MARKER_SIZE = 1100
 # Warehouse pictogram for the depot badge: a gabled building with a garage door
@@ -99,8 +105,7 @@ def panels_of(spec: dict) -> list[dict]:
     return spec.get("panels") or [{"routes": spec["routes"]}]
 
 
-def load_maps(point_count: int) -> list[dict]:
-    maps = json.loads((MAPS_DIR / "routes.json").read_text())["maps"]
+def check_maps(maps: list[dict], point_count: int) -> None:
     for m in maps:
         for route in (r for panel in panels_of(m) for r in panel["routes"]):
             stops = route["stops"]
@@ -109,7 +114,6 @@ def load_maps(point_count: int) -> list[dict]:
             bad = [s for s in stops if not 0 <= s < point_count]
             if bad:
                 raise ValueError(f"{m['name']}/{route['label']}: unknown point indices {bad}")
-    return maps
 
 
 def edge_km(distances: list[list[int]], a: int, b: int) -> float:
@@ -141,20 +145,92 @@ def readable_angle(dx: float, dy: float) -> float:
 
 
 Box = tuple[float, float, float, float]
+Point = tuple[float, float]
 
 
 def overlap_area(a: Box, b: Box) -> float:
     return max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1]))
 
 
-def label_stop(ax, xy: tuple[float, float], neighbours: list[tuple[float, float]], obstacles: list[Box], text: str, **text_kw) -> Box:
+def point_segment_distance(p: Point, a: Point, b: Point) -> float:
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    t = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / ((dx * dx + dy * dy) or 1)))
+    return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
+
+
+def segment_distance(a: Point, b: Point, c: Point, d: Point) -> float:
+    """Shortest distance between segments a-b and c-d; 0 when they cross."""
+    def side(p: Point, q: Point, r: Point) -> float:
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    if side(a, b, c) * side(a, b, d) < 0 and side(c, d, a) * side(c, d, b) < 0:
+        return 0.0
+    return min(point_segment_distance(a, c, d), point_segment_distance(b, c, d), point_segment_distance(c, a, b), point_segment_distance(d, a, b))
+
+
+def segment_crosses_box(a: Point, b: Point, box: Box) -> bool:
+    x0, y0, x1, y1 = box
+    if x0 <= a[0] <= x1 and y0 <= a[1] <= y1:
+        return True
+    # A segment that enters the box from outside crosses at least one of its diagonals.
+    return segment_distance(a, b, (x0, y0), (x1, y1)) == 0 or segment_distance(a, b, (x0, y1), (x1, y0)) == 0
+
+
+def label_leg(ax, leg: tuple[Point, Point], other_legs: list[tuple[Point, Point]], obstacles: list[Box], text: str, **text_kw) -> list[Box]:
+    """Write a leg's distance beside the leg and parallel to it, so the line stays visible.
+
+    Tries the middle of the leg first, then positions nearer its ends, on either
+    side of the line. Takes the first position that stays inside the panel and
+    touches no other leg and no obstacle (pixel boxes of markers and labels). A
+    leg with no such position gets no label. Returns the pixel boxes the label covers.
+    """
+    (ax_, ay), (bx, by) = leg
+    length = math.hypot(bx - ax_, by - ay)
+    probe = ax.text(0, 0, text, **text_kw)
+    size = probe.get_window_extent(ax.figure.canvas.get_renderer())
+    probe.remove()
+    width, height = size.width, size.height
+    # The label's centre stays this far from both stops, so the text never touches a marker.
+    reach = MARKER_DIAMETER_PX / 2 + width / 2
+    if length < 2 * reach:
+        return []
+    ux, uy = (bx - ax_) / length, (by - ay) / length
+    px_per_pt = DPI / 72
+    clearance = height / 2 + ROUTE_CASING_LINEWIDTH / 2 * px_per_pt
+    offset = clearance + 1.5 * px_per_pt
+    bounds = ax.get_window_extent()
+    steps = max(2, math.ceil(2 * width / height))
+    for along in LEG_LABEL_POSITIONS:
+        if not reach <= along * length <= length - reach:
+            continue
+        # The side above the line first, so labels read the same way across the map.
+        for side in (1, -1) if ux >= 0 else (-1, 1):
+            cx = ax_ + ux * along * length - uy * side * offset
+            cy = ay + uy * along * length + ux * side * offset
+            start, end = (cx - ux * width / 2, cy - uy * width / 2), (cx + ux * width / 2, cy + uy * width / 2)
+            centres = [(start[0] + (end[0] - start[0]) * k / steps, start[1] + (end[1] - start[1]) * k / steps) for k in range(steps + 1)]
+            boxes = [(x - height / 2, y - height / 2, x + height / 2, y + height / 2) for x, y in centres]
+            if any(box[0] < bounds.x0 or box[1] < bounds.y0 or box[2] > bounds.x1 or box[3] > bounds.y1 for box in boxes):
+                continue
+            if any(segment_distance(start, end, c, d) < clearance for c, d in other_legs):
+                continue
+            if any(overlap_area(box, o) for box in boxes for o in obstacles):
+                continue
+            ax.annotate(text, (cx, cy), xycoords="figure pixels", rotation=readable_angle(ux, uy), rotation_mode="anchor", ha="center", va="center", **text_kw)
+            return boxes
+    return []
+
+
+def label_stop(ax, xy: tuple[float, float], neighbours: list[tuple[float, float]], obstacles: list[Box], legs: list[tuple[Point, Point]], text: str, **text_kw) -> Box:
     """Place a name label on the side of the marker facing away from its route lines.
 
     Tries eight compass directions, best aligned with the outward direction first.
     A label that would cross the panel's left or right edge slides back inside.
     Of the directions that keep the label inside the panel, takes the one that
     overlaps obstacles (pixel boxes of markers and labels) least, preferring the
-    outward one on ties. Returns the label's pixel box.
+    outward one on ties. A route leg under the label counts as the area of line
+    it hides, so a label crosses a line before it covers a marker or another label.
+    Returns the label's pixel box.
     """
     to_px = ax.transData.transform
     px, py = to_px(xy)
@@ -191,7 +267,8 @@ def label_stop(ax, xy: tuple[float, float], neighbours: list[tuple[float, float]
         own_marker = (px - MARKER_DIAMETER_PX / 2, py - MARKER_DIAMETER_PX / 2, px + MARKER_DIAMETER_PX / 2, py + MARKER_DIAMETER_PX / 2)
         if left < panel_x0 or bottom < panel_y0 or box[3] > panel_y1 or overlap_area(box, own_marker):
             continue
-        placements.append((sum(overlap_area(box, o) for o in obstacles), (ax_x - px, ax_y - py), ha, va, box))
+        hidden_line = sum(segment_crosses_box(a, b, box) for a, b in legs) * ROUTE_CASING_LINEWIDTH * px_per_pt * height
+        placements.append((sum(overlap_area(box, o) for o in obstacles) + hidden_line, (ax_x - px, ax_y - py), ha, va, box))
     _, (off_x, off_y), ha, va, box = min(placements, key=lambda p: p[0])
     ax.annotate(text, xy, xytext=(off_x / px_per_pt, off_y / px_per_pt), textcoords="offset points", ha=ha, va=va, **text_kw)
     return box
@@ -213,55 +290,46 @@ def draw_panel(ax, routes: list[dict], colours: list[str], matrix: dict, extent:
     for s in {s for route in routes for s in route["stops"]}:
         x, y = to_px(stop_xy[s])
         obstacles.append((x - radius, y - radius, x + radius, y + radius))
+
     legend_handles, legend_labels = [], []
     for colour, route in zip(colours, routes):
         stops = route["stops"]
         xs, ys = zip(*(stop_xy[s] for s in stops))
-        ax.plot(xs, ys, color="white", linewidth=8, solid_capstyle="round", solid_joinstyle="round", zorder=2)
-        ax.plot(xs, ys, color=colour, linewidth=4, solid_capstyle="round", solid_joinstyle="round", zorder=3)
+        ax.plot(xs, ys, color="white", linewidth=ROUTE_CASING_LINEWIDTH, solid_capstyle="round", solid_joinstyle="round", zorder=2)
+        ax.plot(xs, ys, color=colour, linewidth=ROUTE_LINEWIDTH, solid_capstyle="round", solid_joinstyle="round", zorder=3)
+        total_km = sum(edge_km(distances, a, b) for a, b in zip(stops, stops[1:]))
+        legend_handles.append(Line2D([], [], color=colour, linewidth=ROUTE_LINEWIDTH, solid_capstyle="round"))
+        legend_labels.append(f"{route['label']}  ·  {total_km:.1f} km")
 
-        legs = list(zip(stops, stops[1:]))
-        for a, b in legs:
-            (ax_, ay), (bx, by) = ax.transData.transform(stop_xy[a]), ax.transData.transform(stop_xy[b])
-            length = math.hypot(bx - ax_, by - ay) or 1
-            text = f"{edge_km(distances, a, b):.1f} km"
-            # A pill that does not fit between the two markers sits beside the leg instead of on it.
-            pill_px = (len(text) * 0.6 + 1.5) * PILL_FONTSIZE * DPI / 72
-            shift = 0 if length >= pill_px + MARKER_DIAMETER_PX else 1.6 * PILL_FONTSIZE * DPI / 72
-            normal_x, normal_y = -(by - ay) / length, (bx - ax_) / length
-            if normal_y < 0:
-                normal_x, normal_y = -normal_x, -normal_y
-            cx, cy = (ax_ + bx) / 2 + normal_x * shift, (ay + by) / 2 + normal_y * shift
-            pill = ax.annotate(
-                text, (cx, cy), xycoords="figure pixels",
-                rotation=readable_angle(bx - ax_, by - ay), rotation_mode="anchor", ha="center", va="center",
-                fontsize=PILL_FONTSIZE, fontweight=600, color=NAVY, zorder=4,
-                bbox={"boxstyle": "round,pad=0.35,rounding_size=0.8", "facecolor": "white", "edgecolor": colour, "linewidth": 1.5},
-            )
-            # The text's box excludes the rounded frame around it, hence the padding.
-            text_box = pill.get_window_extent(ax.figure.canvas.get_renderer())
-            frame = 0.5 * PILL_FONTSIZE * DPI / 72
-            obstacles.append((text_box.x0 - frame, text_box.y0 - frame, text_box.x1 + frame, text_box.y1 + frame))
+    legs = [(colour, a, b) for colour, route in zip(colours, routes) for a, b in zip(route["stops"], route["stops"][1:])]
+    legs_px = [(tuple(map(float, to_px(stop_xy[a]))), tuple(map(float, to_px(stop_xy[b])))) for _, a, b in legs]
 
+    # Stop names are placed before the leg distances: a name is always shown, a distance only where room is left.
+    for colour, route in zip(colours, routes):
+        stops = route["stops"]
         for order, i in enumerate(range(1, len(stops) - 1), start=1):
             x, y = stop_xy[stops[i]]
             ax.scatter(x, y, s=STOP_MARKER_SIZE, color=colour, edgecolors="white", linewidths=2.5, zorder=5)
             ax.text(x, y, str(order), color="white", fontsize=15, fontweight=600, ha="center", va="center", zorder=6)
-            obstacles.append(label_stop(ax, (x, y), [stop_xy[stops[i - 1]], stop_xy[stops[i + 1]]], obstacles, points[stops[i]]["name"], fontsize=15, color=NAVY, path_effects=halo, zorder=6))
-
-        total_km = sum(edge_km(distances, a, b) for a, b in legs)
-        legend_handles.append(Line2D([], [], color=colour, linewidth=4, solid_capstyle="round"))
-        legend_labels.append(f"{route['label']}  ·  {total_km:.1f} km")
+            obstacles.append(label_stop(ax, (x, y), [stop_xy[stops[i - 1]], stop_xy[stops[i + 1]]], obstacles, legs_px, points[stops[i]]["name"], fontsize=15, color=NAVY, path_effects=halo, zorder=6))
 
     for depot in {route["stops"][0] for route in routes}:
         x, y = stop_xy[depot]
         ax.scatter(x, y, s=DEPOT_MARKER_SIZE, color=NAVY, edgecolors="white", linewidths=2.5, zorder=5)
         ax.scatter(x, y, s=DEPOT_MARKER_SIZE * 0.3, marker=WAREHOUSE_ICON, color="white", linewidths=0, zorder=6)
         neighbours = [stop_xy[r["stops"][j]] for r in routes if r["stops"][0] == depot for j in (1, -2)]
-        obstacles.append(label_stop(ax, (x, y), neighbours, obstacles, "Depot", fontsize=15, fontweight=600, color=NAVY, path_effects=halo, zorder=6))
+        obstacles.append(label_stop(ax, (x, y), neighbours, obstacles, legs_px, "Depot", fontsize=15, fontweight=600, color=NAVY, path_effects=halo, zorder=6))
 
     legend = ax.legend(legend_handles, legend_labels, loc="upper left", fontsize=16, handlelength=1.6, borderpad=0.9, borderaxespad=1.2, fancybox=True, framealpha=0.92, edgecolor="none")
     legend.set_zorder(10)
+    # The legend only has a position once the figure has been drawn.
+    ax.figure.canvas.draw()
+    legend_box = legend.get_window_extent()
+    obstacles.append((legend_box.x0, legend_box.y0, legend_box.x1, legend_box.y1))
+
+    for n, (colour, a, b) in enumerate(legs):
+        obstacles.extend(label_leg(ax, legs_px[n], legs_px[:n] + legs_px[n + 1:], obstacles, f"{edge_km(distances, a, b):.1f} km",
+                                   fontsize=LEG_LABEL_FONTSIZE, fontweight=600, color=colour, path_effects=halo, zorder=4))
 
 
 def render_map(spec: dict, matrix: dict, tile_url: str, logo) -> Path:
@@ -297,8 +365,12 @@ def main() -> None:
     ctx.set_cache_dir(str(CACHE_DIR / "tiles"))
     use_inter_font()
     matrix = json.loads(MATRIX_FILE.read_text())
+    definitions = json.loads((MAPS_DIR / "routes.json").read_text())
+    check_maps(definitions["maps"], len(matrix["points"]))
+    labels = definitions.get("stop_labels", {})
+    matrix = {**matrix, "points": [{**point, "name": labels.get(str(i), point["name"])} for i, point in enumerate(matrix["points"])]}
     logo = maptiler_logo()
-    for spec in load_maps(len(matrix["points"])):
+    for spec in definitions["maps"]:
         print(f"Rendered {render_map(spec, matrix, TILE_URL + key, logo).relative_to(REPO_ROOT)}")
 
 
