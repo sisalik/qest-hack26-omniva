@@ -20,12 +20,23 @@ Each slide has its time budget in the speaker notes (`<!-- ... -->` blocks).
 - Orange `[…]` placeholders mark what still needs to be filled in.
 - Put images (plots exported from the notebooks) in `img/` and reference them as `![w:900](img/name.png)`.
 
+## Route maps
+
+`maps/render_maps.py` draws routes on a map of Tallinn and writes one PNG per map to `img/`. Each map is defined in `maps/routes.json`. A route lists point indices from `tallinn_osrm_matrix.json`. A map has either `routes` (one map) or `panels` (maps side by side, each with its own `routes`).
+
+1. Add `MAPTILER_KEY=<your key>` to `.env` in the repository root. A free MapTiler account is enough.
+2. Run `uv run presentation/maps/render_maps.py`.
+
+Map tiles and fonts are cached in `maps/.cache/`, so later renders work offline.
+
 ## Export to Google Slides
 
 ```bash
 cd presentation
-npx @marp-team/marp-cli@latest slides.md --pptx -o slides.pptx
+npx @marp-team/marp-cli@latest slides.md --allow-local-files --pptx -o slides.pptx
 ```
+
+`--allow-local-files` lets Marp read the images in `img/`. Without it, PDF, PPTX and PNG exports leave the images out.
 
 Then upload `slides.pptx` to Google Drive and open it with Google Slides.
 

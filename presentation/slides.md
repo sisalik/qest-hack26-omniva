@@ -107,6 +107,22 @@ Say what limited n: simulator memory, circuit depth, or success probability.
 
 ---
 
+### 2 · Results · Step 1
+
+## Optimal route vs QAOA
+
+![w:900](img/step1_comparison.png)
+
+<span class="small">Symmetrised road distances, as used by the solvers. <span class="todo">[real QAOA route]</span></span>
+
+<!--
+~20 s. Left: brute force over all orders. Right: the best route QAOA sampled.
+Point at the legs where the two differ and give the gap in km and %.
+Map: presentation/maps/routes.json, re-render with `uv run presentation/maps/render_maps.py`.
+-->
+
+---
+
 ### 2 · Results · Step 2
 
 ## Two vehicles
