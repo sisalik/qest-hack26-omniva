@@ -51,6 +51,10 @@ To simulate the circuits and optimise them on our own machines, we scale the pro
 
 In every step, the cost to minimise is the road distance in metres, not the travel time. The distances come from `tallinn_osrm_matrix.json`. Travel times from the same file are used only as a constraint, from Step 3 onwards.
 
+The road distances are not symmetric: A→B and B→A can differ by up to 1.6 km because of one-way streets and turns. Our encoding uses one qubit per pair of locations, so it needs one distance per pair. We take the upper half of the matrix: the distance from the lower-indexed point to the higher-indexed one, `D[min(i, j)][max(i, j)]`. After QAOA finds a route, we check both directions against the real matrix and keep the shorter one.
+
+We chose the upper half after comparing it with the alternatives by brute force. It found the true best route in 87 to 99 % of test cases with 5 to 7 locations. Averaging both directions found it in 79 to 93 %. The upper half works well here because it mostly holds the shorter direction. This depends on how the points are numbered, so re-run the comparison if the points change.
+
 1. **One vehicle, one route.** Solve the travelling salesperson problem (TSP) on 5 or more locations, minimising the total distance driven. Find the largest number of locations we can handle. Make sure every team member understands how the solution works.
 2. **Two vehicles.** Add a second vehicle and minimise the total distance of both routes. The second vehicle is needed because one vehicle cannot cover enough ground: it is too slow, or it has a distance limit.
 3. **Time windows.** Require some locations to be visited within a given time window. A first idea: give each edge a travel time as well as a distance, and require that the travel times along a route stay below a limit. The cost is still the total distance; travel time only limits which routes are allowed.
