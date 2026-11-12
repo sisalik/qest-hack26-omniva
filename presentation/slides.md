@@ -43,42 +43,48 @@ style: |
 
 ### 1 · Business problem
 
-## 50,000 parcels a day, one sorting hub
+## One day of parcels in Tallinn
 
-- Every evening Omniva plans the next day for all of Estonia: **fleet size, drivers, routes**
-- Goals: fewest kilometres, fewest vehicles, pickups folded into delivery routes
-- Constraints: vehicle capacity, shift length, delivery **time windows**
+<style scoped>
+table { font-size: 24px; }
+th { font-size: 48px; color: #B5541C; background: transparent; }
+td { color: #4A5568; }
+table, tr, th, td { border: none !important; background: transparent !important; }
+th { white-space: nowrap; }
+</style>
 
-**Why it is hard:** a route through *n* stops has *(n − 1)!* possible orders.
-10 stops → 362,880 routes; 20 stops → 1.2 × 10¹⁷. Adding vehicles and time windows makes it worse.
+| ~17,000 | 94 | 10⁴ – 10⁸ | *n*² → *n*³ |
+|---|---|---|---|
+| parcels a day | Omniva parcel lockers | qubits for the full problem | qubits grow quadratically, the circuit cubically |
+
+- Every evening: which van takes which parcels, and in what order, within shifts and time windows
+- **Why it is hard:** *n* stops have *(n − 1)!* possible routes; 20 stops already give 10¹⁷
 
 <!--
-~30 s (part of the 1-minute business block).
-Classical solvers handle this today with heuristics; the question is what a quantum approach costs.
+~30 s.
+17,000/day: 50,000 parcels a day in Estonia (problem statement) x Tallinn's share of the population (457,000 / 1,360,745). Our estimate, not an Omniva figure.
+94 Omniva parcel lockers in Tallinn.
+Qubits: encoding "stop x position", n^2 qubits for n stops. Lower bound: one round of the 94 lockers = ~8,800 qubits. Upper bound: every parcel its own stop, 17,000^2 = ~3 x 10^8. Today's hardware: tens to ~150 qubits.
+Scaling (required question): qubits grow quadratically; two-qubit terms per QAOA layer grow cubically (~2 n^3), so the circuit grows faster than the qubit count.
+Sources and calculations: presentation/README.md.
 -->
 
 ---
 
 ### 1 · Business problem
 
-## How many qubits would the real problem need?
+## Three toy tasks on real Tallinn roads
 
-Encoding "stop × position in the route": one qubit per (stop, step) pair.
+Data: depot Omniva Pallasti + 9 real Tallinn stops, real road distances and travel times. Cost to minimise: **distance**.
 
-| Stops *n* | Qubits ≈ *n*² | Two-qubit terms per QAOA layer ≈ *n*³ |
-|---|---|---|
-| 5 (our toy) | 25 | ~200 |
-| 9 (Tallinn data) | 81 | ~1,200 |
-| <span class="todo">[stops per real route]</span> | <span class="todo">[…]</span> | <span class="todo">[…]</span> |
-| 50,000 (whole day, one route) | 2.5 × 10⁹ | ~2.5 × 10¹⁴ |
-
-**Scaling:** qubits grow **quadratically**, circuit size per layer **cubically**.
+1. **One van, one route.** The shortest round trip through 5+ stops. How many stops can we handle?
+2. **Two vans.** Too many stops for one van, even on its best route: split them between two vans, minimise the total distance.
+3. **Time windows.** Some stops accept deliveries only in a given window; the route is still the shortest one that is on time.
 
 <!--
-~30 s. Answer the two required questions explicitly:
-- full problem: billions of qubits for one big route; even split per vehicle it is far beyond today's hardware;
-- scaling: neither linear nor just quadratic; the circuit grows like n^3 because every pair of stops at consecutive steps gets a term.
-TODO: fill the row for a realistic single-vehicle route once we fix the numbers.
+~30 s.
+Data: tallinn_osrm_matrix.json, OSRM road network, 11 x 11 (depot twice: start and return), distances in metres and times in seconds; one-way streets make the matrices asymmetric.
+Classical reference for step 1: brute force on depot + 4 stops = 16.96 km; all 9 stops: 40.3 km, 73 min (VROOM agrees with brute force).
 -->
 
 ---
