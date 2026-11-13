@@ -6,9 +6,9 @@
 
 Reads map definitions from routes.json and writes one PNG per map to
 presentation/img/. "stop_labels" in routes.json gives stops a shorter name on
-the maps than in the matrix file. Routes are straight lines. Each leg shows the symmetrised
-distance the solvers use, D[min(i, j)][max(i, j)], beside the line where there
-is room for it. Tiles, fonts and the logo are cached in .cache/, so re-renders
+the maps than in the matrix file. Routes are straight lines. Each leg shows its
+one-way road distance D[i][j] beside the line where there is room for it. A leg
+driven in both directions gets one label with both distances. Tiles, fonts and the logo are cached in .cache/, so re-renders
 while tweaking the style run offline.
 
 Run from anywhere: uv run presentation/maps/render_maps.py
@@ -117,7 +117,7 @@ def check_maps(maps: list[dict], point_count: int) -> None:
 
 
 def edge_km(distances: list[list[int]], a: int, b: int) -> float:
-    return distances[min(a, b)][max(a, b)] / 1000
+    return distances[a][b] / 1000
 
 
 def fit_extent(xs: list[float], ys: list[float], aspect: float, pad: float = 0.25) -> tuple[float, float, float, float]:
@@ -327,8 +327,15 @@ def draw_panel(ax, routes: list[dict], colours: list[str], matrix: dict, extent:
     legend_box = legend.get_window_extent()
     obstacles.append((legend_box.x0, legend_box.y0, legend_box.x1, legend_box.y1))
 
+    driven = [(a, b) for _, a, b in legs]
     for n, (colour, a, b) in enumerate(legs):
-        obstacles.extend(label_leg(ax, legs_px[n], legs_px[:n] + legs_px[n + 1:], obstacles, f"{edge_km(distances, a, b):.1f} km",
+        if (b, a) in driven[:n]:
+            continue
+        text = f"{edge_km(distances, a, b):.1f} km"
+        if (b, a) in driven:
+            text = f"{text} there, {edge_km(distances, b, a):.1f} km back"
+        other_legs = [legs_px[k] for k in range(len(legs)) if driven[k] not in ((a, b), (b, a))]
+        obstacles.extend(label_leg(ax, legs_px[n], other_legs, obstacles, text,
                                    fontsize=LEG_LABEL_FONTSIZE, fontweight=600, color=colour, path_effects=halo, zorder=4))
 
 
@@ -338,14 +345,13 @@ def render_map(spec: dict, matrix: dict, tile_url: str, logo) -> Path:
     panel_w = (1 - PANEL_GAP * (len(panels) - 1)) / len(panels)
     aspect = FIG_WIDTH_IN * panel_w / fig_h
 
-    # All panels share one map area so the routes are directly comparable.
     stop_xy = [to_mercator(p["lon"], p["lat"]) for p in matrix["points"]]
-    used = {s for panel in panels for route in panel["routes"] for s in route["stops"]}
-    extent = fit_extent([stop_xy[s][0] for s in used], [stop_xy[s][1] for s in used], aspect)
-
     fig = plt.figure(figsize=(FIG_WIDTH_IN, fig_h), dpi=DPI)
     colours = iter(ROUTE_COLOURS)
     for n, panel in enumerate(panels):
+        # Each panel zooms to fit its own stops.
+        used = {s for route in panel["routes"] for s in route["stops"]}
+        extent = fit_extent([stop_xy[s][0] for s in used], [stop_xy[s][1] for s in used], aspect)
         ax = fig.add_axes((n * (panel_w + PANEL_GAP), 0, panel_w, 1))
         draw_panel(ax, panel["routes"], [next(colours) for _ in panel["routes"]], matrix, extent, tile_url)
 

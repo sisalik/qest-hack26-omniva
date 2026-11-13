@@ -109,15 +109,15 @@ Say what limited n: simulator memory, circuit depth, or success probability.
 
 ### 2 · Results · Step 1
 
-## Optimal route vs QAOA
+## Shortest routes: 5 and 10 locations
 
-![w:900](img/step1_comparison.png)
+![w:900](img/step1_routes.png)
 
-<span class="small">Symmetrised road distances, as used by the solvers. <span class="todo">[real QAOA route]</span></span>
+<span class="small">Brute force over every order, on one-way road distances.</span>
 
 <!--
-~20 s. Left: brute force over all orders. Right: the best route QAOA sampled.
-Point at the legs where the two differ and give the gap in km and %.
+~20 s. Left: depot + 4 stops, 24 orders, 17.0 km. Right: depot + 9 stops, 362,880 orders, 40.3 km.
+One-way streets make direction matter: each route driven in reverse is longer (18.2 km and 41.7 km).
 Map: presentation/maps/routes.json, re-render with `uv run presentation/maps/render_maps.py`.
 -->
 
@@ -125,19 +125,17 @@ Map: presentation/maps/routes.json, re-render with `uv run presentation/maps/ren
 
 ### 2 · Results · Step 2
 
-## Two vehicles: 48.3 km instead of 40.2 km
+## Two vehicles: 3 stops, 15.6 km
 
-![w:900](img/step2_comparison.png)
+![w:900](img/step2_routes.png)
 
-<span class="small">Symmetrised road distances. Each van may drive at most 30.2 km, 75 % of the one-van tour. QAOA returns this plan in up to **97 %** of shots (simulated, 175 qubits).</span>
+<span class="small">Brute force over every split and order, on one-way road distances. Each van serves at least one stop.</span>
 
 <!--
-~50 s. Left: the step 1 tour, one van, 40.2 km. Right: the best plan when no van may drive more than 30.2 km.
-Why a limit: without one, the best two-van plan leaves the second van at the depot. The limit stands for the working day: a van spends it driving and handing over parcels.
-Brute force over all 3,628,800 orders gives one best pair of routes: 22.4 km and 25.9 km, 20 % more than one van.
-Approach: a copy of the depot in the list of stops turns two routes into one order, so the step 1 circuit works unchanged. The distance limit is checked inside the circuit with quantum arithmetic.
-Hard limit: 97 % of shots are the best plan, 175 qubits, 143 million CX gates. Penalty version: 11.5 % of shots, 138 qubits, 3.8 million CX gates, and fewer cost evaluations overall.
-Numbers: solutions/problem_2_two_vehicles/README.md. Map: presentation/maps/routes.json.
+~50 s. Depot + 3 stops, two vans: the instance from Eli_two_couriers_solution.ipynb (18 qubits).
+Brute force over all 12 plans gives 15.6 km: one van drives 10.1 km to the President's Office and Kultuurikatel, the other 5.5 km to the kebab shop and back.
+The next best plan visits the same stops in reverse order and is 0.2 km longer, because of one-way streets.
+Map: presentation/maps/routes.json.
 -->
 
 ---
