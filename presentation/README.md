@@ -20,12 +20,23 @@ Each slide has its time budget in the speaker notes (`<!-- ... -->` blocks).
 - Orange `[…]` placeholders mark what still needs to be filled in.
 - Put images (plots exported from the notebooks) in `img/` and reference them as `![w:900](img/name.png)`.
 
+## Route maps
+
+`maps/render_maps.py` draws routes on a map of Tallinn and writes one PNG per map to `img/`. Each map is defined in `maps/routes.json`. A route lists point indices from `tallinn_osrm_matrix.json`. A map has either `routes` (one map) or `panels` (maps side by side, each with its own `routes`). `stop_labels` gives a stop a shorter name on the maps, keyed by its point index. Each leg shows its distance beside the line where there is room for it.
+
+1. Add `MAPTILER_KEY=<your key>` to `.env` in the repository root. A free MapTiler account is enough.
+2. Run `uv run presentation/maps/render_maps.py`.
+
+Map tiles and fonts are cached in `maps/.cache/`, so later renders work offline.
+
 ## Export to Google Slides
 
 ```bash
 cd presentation
-npx @marp-team/marp-cli@latest slides.md --pptx -o slides.pptx
+npx @marp-team/marp-cli@latest slides.md --allow-local-files --pptx -o slides.pptx
 ```
+
+`--allow-local-files` lets Marp read the images in `img/`. Without it, PDF, PPTX and PNG exports leave the images out.
 
 Then upload `slides.pptx` to Google Drive and open it with Google Slides.
 
@@ -49,6 +60,7 @@ The slides show numbers only; keep the sources here.
 | Estonia population 1,360,745 on 1 Jan 2026 (Statistics Estonia) | Slide 3 | [Global Estonian, Apr 2026](https://globalestonian.com/en/node/8754) |
 | 94 Omniva parcel lockers in Tallinn (456 for all carriers), data updated 12 Nov 2026 | Slide 3 | [pakiautomaat24.eu/tallinn](https://www.pakiautomaat24.eu/tallinn) (aggregator, not an official Omniva count) |
 | 50,000 parcels a day in Estonia | Slides 2–3 | Hackathon problem statement (`README.md` in the repo root) |
+| Two vans: 48.3 km against 40.2 km for one van, 30.2 km limit per van, 97 % of shots, 175 qubits | Step 2 slide | [`solutions/problem_2_two_vehicles/README.md`](../solutions/problem_2_two_vehicles/README.md) |
 
 ### Our own estimates (not published figures)
 

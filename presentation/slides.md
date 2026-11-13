@@ -107,19 +107,37 @@ Say what limited n: simulator memory, circuit depth, or success probability.
 
 ---
 
-### 2 · Results · Step 2
+### 2 · Results · Step 1
 
-## Two vehicles
+## Optimal route vs QAOA
 
-<!-- ![w:900](img/step2_results.png) -->
+![w:900](img/step1_comparison.png)
 
-<span class="todo">[map or graph of the two routes; total distance vs one vehicle]</span>
-
-- Approach: <span class="todo">[e.g. split the stops between vehicles first, then route each]</span>
-- Result: <span class="todo">[…]</span>
+<span class="small">Symmetrised road distances, as used by the solvers. <span class="todo">[real QAOA route]</span></span>
 
 <!--
-~50 s.
+~20 s. Left: brute force over all orders. Right: the best route QAOA sampled.
+Point at the legs where the two differ and give the gap in km and %.
+Map: presentation/maps/routes.json, re-render with `uv run presentation/maps/render_maps.py`.
+-->
+
+---
+
+### 2 · Results · Step 2
+
+## Two vehicles: 48.3 km instead of 40.2 km
+
+![w:900](img/step2_comparison.png)
+
+<span class="small">Symmetrised road distances. Each van may drive at most 30.2 km, 75 % of the one-van tour. QAOA returns this plan in up to **97 %** of shots (simulated, 175 qubits).</span>
+
+<!--
+~50 s. Left: the step 1 tour, one van, 40.2 km. Right: the best plan when no van may drive more than 30.2 km.
+Why a limit: without one, the best two-van plan leaves the second van at the depot. The limit stands for the working day: a van spends it driving and handing over parcels.
+Brute force over all 3,628,800 orders gives one best pair of routes: 22.4 km and 25.9 km, 20 % more than one van.
+Approach: a copy of the depot in the list of stops turns two routes into one order, so the step 1 circuit works unchanged. The distance limit is checked inside the circuit with quantum arithmetic.
+Hard limit: 97 % of shots are the best plan, 175 qubits, 143 million CX gates. Penalty version: 11.5 % of shots, 138 qubits, 3.8 million CX gates, and fewer cost evaluations overall.
+Numbers: solutions/problem_2_two_vehicles/README.md. Map: presentation/maps/routes.json.
 -->
 
 ---
