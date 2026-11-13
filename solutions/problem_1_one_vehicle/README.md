@@ -28,10 +28,11 @@ Our solutions to the travelling salesperson problem (TSP) from the repository [R
 | 1 | [Brute force](brute_force_tsp.ipynb) | | | 100 % | 100 % | 0 % | 24 | None | Yes | `dd61898` | 2026-11-12 19:57 |
 | 2 | [Eli's QAOA](../../Eli_solution.ipynb) | 16 | 2 | 0.32 % | 7.6 % | 26.2 % | 4,248 | 200 simulated circuits | No, simulated | `e934c6b` | 2026-11-12 21:19 |
 | 3 | [Artem's QAOA](../../Artem_solution_based_on_Eli_solution_iqm.ipynb), simulated | 16 | 1 | 0.20 % | 5.7 % | 28.5 % | 4,630 | About 14,400 simulated circuits | No, simulated | `ad8f8fc` | 2026-11-12 20:10 |
-| 4 | [Artem's QAOA](../../Artem_solution_based_on_Eli_solution_iqm.ipynb), on IQM Emerald | 16 | 1 | 0 of 5,000 shots | 0.1 % | Not available | Not reached | As above | Yes, 280 CZ gates on the device | `ad8f8fc` | 2026-11-12 20:10 |
-| 5 | Random 16-bit string (reference) | 16 | 0 | 0.0015 % | 0.037 % | 26.5 % | 301,803 | None | Yes | | 2026-11-12 20:10 |
+| 4 | [Eli's QAOA](../../Eli_solution.ipynb), on IBM Kingston | 16 | 2 | 0 of 256 shots | 1.2 % (3 of 256) | Not available | Not reached | As rank 2 | Yes, real device | `df288e2` | 2026-11-13 08:51 |
+| 5 | [Artem's QAOA](../../Artem_solution_based_on_Eli_solution_iqm.ipynb), on IQM Emerald | 16 | 1 | 0 of 5,000 shots | 0.1 % | Not available | Not reached | As above | Yes, 280 CZ gates on the device | `ad8f8fc` | 2026-11-12 20:10 |
+| 6 | Random 16-bit string (reference) | 16 | 0 | 0.0015 % | 0.037 % | 26.5 % | 301,803 | None | Yes | | 2026-11-12 20:10 |
 
-The measures for ranks 2 to 5 are computed in [`penalty_qaoa_scores.ipynb`](penalty_qaoa_scores.ipynb).
+The measures for ranks 2, 3, 5 and 6 are computed in [`penalty_qaoa_scores.ipynb`](penalty_qaoa_scores.ipynb). Rank 4 is taken from the hardware cells of [`Eli_solution.ipynb`](../../Eli_solution.ipynb); its 256 shots are not saved, so the mean gap cannot be computed.
 
 The notebooks moved into this directory after they were scored. Only the path to the data file changed, so the scores still hold.
 
@@ -83,6 +84,7 @@ Standard QAOA on 5 locations with one-way distances.
 - **Angles:** COBYLA from a fixed start, 200 evaluations of the exact expectation value.
 - **Result:** 7.6 % of shots are valid tours and 0.32 % are the shortest tour. That is 200 times better than a random bitstring. The best of 10,000 simulated shots is the shortest tour, and it first appears between 500 and 1,000 shots.
 - **Limit:** the mean gap among valid shots (26.2 %) is the same as for random valid tours (26.5 %). The penalty is much larger than the distances, so the circuit finds valid tours but cannot tell short ones from long ones.
+- **On hardware:** the same 2-layer circuit ran on IBM Kingston with 256 shots. 3 shots were valid tours (1.2 %) and none was the shortest; the best was 18.294 km, 7.8 % longer than the shortest. A random bitstring would give about 0.1 valid shots in 256, so the device kept part of the signal, although 256 shots are too few for a precise rate.
 
 ### Artem's QAOA on IQM Emerald: [`../../Artem_solution_based_on_Eli_solution_iqm.ipynb`](../../Artem_solution_based_on_Eli_solution_iqm.ipynb)
 
@@ -91,7 +93,7 @@ Eli's model with 1 layer, run on a real quantum computer.
 - **Angles:** a grid search over the two angles that maximises P(valid), then four rounds of zooming in. The shortest valid tour is then picked classically from the shots.
 - **Simulated:** 5.7 % valid shots and 0.20 % shortest tours, close to Eli's 2-layer result with half the gates.
 - **On hardware:** the circuit needs 280 CZ gates on the 54-qubit IQM Emerald device after routing. Of 5,000 shots, 5 were valid tours and none was the shortest. A random bitstring would give about 2 valid shots, so the result is close to noise. The best sampled tour was 19.831 km, 16.9 % longer than the shortest.
-- **This is our only result from real hardware.** It shows the gap between simulation and today's devices at 16 qubits.
+- **One of our two results from real hardware**, with Eli's run on IBM Kingston. Both show the gap between simulation and today's devices at 16 qubits.
 
 ## Scoring a solution
 
